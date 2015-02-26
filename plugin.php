@@ -3,7 +3,7 @@
 Plugin Name: WP Dynamic Links
 Plugin URI: http://www.wpdynamiclinks.com/
 Description: Easily shorten your URLs, manage your outbound links, track clicks, geotarget, & A/B split test.
-Version: 1.0
+Version: 1.0.1
 Author: Soflyy
 Author URI: http://www.soflyy.com/
 */
@@ -223,39 +223,62 @@ final class PMLC_Plugin {
 			}
 			echo $buffer;
 		} else {
-			$controllerName =  preg_replace('%(^' . preg_quote(self::PREFIX, '%') . '|_).%e', 'strtoupper("$0")', str_replace('-', '_', $page)); // capitalize prefix and first letters of class name parts
+
+			// capitalize prefix and first letters of class name parts	
+			if (function_exists('preg_replace_callback')){
+				$controllerName = preg_replace_callback('%(^' . preg_quote(self::PREFIX, '%') . '|_).%', array($this, "replace_callback"),str_replace('-', '_', $page));
+			}
+			else{
+				$controllerName =  preg_replace('%(^' . preg_quote(self::PREFIX, '%') . '|_).%e', 'strtoupper("$0")', str_replace('-', '_', $page)); 
+			}
+			
 			if ( ! in_array($controllerName, array('PMLC_Admin_Help', 'PMLC_Admin_Home'))) {
 				//wp_redirect(add_query_arg('page', 'pmlc-admin-home', admin_url('admin.php')));
 			}
 
 			$actionName = str_replace('-', '_', $action);
 			if (method_exists($controllerName, $actionName)) {
-				$this->_admin_current_screen = (object)array(
-					'id' => $controllerName,
-					'base' => $controllerName,
-					'action' => $actionName,
-					'is_ajax' => isset($_SERVER['HTTP_X_REQUESTED_WITH']) AND strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest',
-					'is_network' => is_network_admin(),
-					'is_user' => is_user_admin(),
-				);
-				add_filter('current_screen', array($this, 'getAdminCurrentScreen'));
 
-				$controller = new $controllerName();
-				if ( ! $controller instanceof PMLC_Controller_Admin) {
-					throw new Exception("Administration page `$page` matches to a wrong controller type.");
+				if ( ! get_current_user_id() or ! current_user_can('manage_options')) {
+				    // This nonce is not valid.
+				    die( 'Security check' ); 
+
+				} else {
+
+					$this->_admin_current_screen = (object)array(
+						'id' => $controllerName,
+						'base' => $controllerName,
+						'action' => $actionName,
+						'is_ajax' => isset($_SERVER['HTTP_X_REQUESTED_WITH']) AND strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest',
+						'is_network' => is_network_admin(),
+						'is_user' => is_user_admin(),
+					);
+					add_filter('current_screen', array($this, 'getAdminCurrentScreen'));
+
+					$controller = new $controllerName();
+					if ( ! $controller instanceof PMLC_Controller_Admin) {
+						throw new Exception("Administration page `$page` matches to a wrong controller type.");
+					}
+					ob_start();
+					$controller->$action();
+					$buffer = ob_get_clean();
+					if ($this->_admin_current_screen->is_ajax) { // ajax request
+						die($buffer); // stop processing since we want to output only what controller is randered, nothing in addition
+					}
+
 				}
-				ob_start();
-				$controller->$action();
-				$buffer = ob_get_clean();
-				if ($this->_admin_current_screen->is_ajax) { // ajax request
-					die($buffer); // stop processing since we want to output only what controller is randered, nothing in addition
-				}
+				
 			} else { // redirect to dashboard if requested page and/or action don't exist
 				wp_redirect(admin_url());
 				die();
 			}
 		}
 	}
+
+	public function replace_callback($matches){
+		return strtoupper($matches[0]);
+	}
+	
 	protected $_admin_current_screen = null;
 	public function getAdminCurrentScreen()
 	{

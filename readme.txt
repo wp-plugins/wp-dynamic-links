@@ -2,8 +2,8 @@
 Contributors: soflyy
 Tags: affiliate, link, cloaker, cloak, pretty, url, short, shortener, geotarget, redirect
 Requires at least: 3.8
-Tested up to: 3.8
-Stable tag: 1.0
+Tested up to: 4.1
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Committers: soflyy, donmhico
@@ -43,6 +43,9 @@ Support for sub IDs.
 Support for a prefix so you can have your-domain.com/prefix/your-link instead of your-domain.com/your-link
 
 == Changelog ==
+
+= 1.0.1 =
+* critical security fix - stopping non-logged in users from accessing adminInit http://www.wpallimport.com/2015/02/wp-import-4-1-1-mandatory-security-update/
 
 = 1.0 =
 * Initial release on WordPress.org.
